@@ -107,7 +107,8 @@ function buildMessageHtml(msg, attachmentNames) {
   // Build a simple, printable HTML snapshot. msg.getBody() returns HTML body when available.
   let headersHtml = '<div style="font-family: Arial, sans-serif; margin-bottom:12px;">' +
     '<strong>From:</strong> ' + escapeHtml(msg.getFrom()) + '<br>' +
-    '<strong>To:</strong> ' + escapeHtml(msg.getTo()) + '<br>' +
+    // "To" line is always "undisclosed recipients" which tells us nothing
+    // '<strong>To:</strong> ' + escapeHtml(msg.getTo()) + '<br>' +
     '<strong>Date:</strong> ' + escapeHtml(msg.getDate().toString()) + '<br>' +
     '<strong>Subject:</strong> ' + escapeHtml(msg.getSubject() || '') + '<br>' +
     '</div>'
