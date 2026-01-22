@@ -1,33 +1,38 @@
 /**
- * Archive HR newsletters in Gmail to Drive as dated PDFs.
- *
- * Usage:
- *   Defaults: sender 'hr@cca.edu', subject includes 'HR NEWS', no folderId (will create folder named 'HR News Archive')
- *   archiveYear(2024)
- *
- *   Custom range:
- *   archiveHRNews('2024-01-01', '2024-12-31', 'hr@cca.edu', 'HR NEWS', null)
+ * Archive email in Gmail to Drive as dated PDFs.
  *
  * Notes:
  * - startDate and endDate are strings 'YYYY-MM-DD'.
- * - If folderId is null, a folder named 'HR News Archive' will be created or reused in your Drive root.
+ * - If folderId is null, a folder named 'email@cca.edu Email Archive' is created in your Drive root or reused if it already exists there.
  */
 
-archiveYear(2025)
+// These folders exist in ephetteplace Drive
+const folders = {
+  "HR News Archive": "1OeKtq6FnprqLo7iu8-eyqOx3HzuFBPh0",
+  "President's Office Email Archive": "1z7oiwjQIwnQ_Orq2nsp80q0qx9bqoKPd"
+}
 
-function archiveHRNews(startDate, endDate, sender, subjectKeyword, folderId) {
-  // default values
-  sender = sender || 'hr@cca.edu'
-  subjectKeyword = subjectKeyword || 'HR NEWS'
-  folderId = folderId || getOrCreateFolderByName('HR News Archive').getId()
+// archive HR newsletters
+archiveHRYear(2025)
+// archive President's emails
+// archiveEmails('2025-01-01', '2026-01-01', 'presidents-office@cca.edu', null, folders["President's Office Email Archive"])
 
-  // Note that Gmail 'after:' includes the date given; 'before:' excludes the date.
+function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
+  if (!sender) {
+    throw new Error('sender email is required')
+  }
+  // Note that GmailApp 'after:' includes the date given; 'before:' excludes the date.
   if (!startDate || !startDate.match(/^\d{4}\-\d{2}\-\d{2}$/)) {
     throw new Error('startDate is required (format YYYY-MM-DD). Use archiveYear(year) to archive a full year.')
   }
   if (!endDate || !endDate.match(/^\d{4}\-\d{2}\-\d{2}$/)) {
     throw new Error('endDate is required (format YYYY-MM-DD). Use archiveYear(year) to archive a full year.')
   }
+
+  // create folder if we do not have one
+  folderId = folderId || getOrCreateFolderByName(`${sender} Email Archive`).getId()
+  // handle null subjectKeyword
+  subjectKeyword = subjectKeyword || ''
 
   let query = 'from:' + sender + ' subject:"' + subjectKeyword + '" after:' + startDate + ' before:' + endDate
   Logger.log('Gmail query: %s', query)
@@ -45,7 +50,7 @@ function archiveHRNews(startDate, endDate, sender, subjectKeyword, folderId) {
       let formattedDate = Utilities.formatDate(msgDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
       let subject = msg.getSubject() || '(no subject)'
       let safeSubject = sanitizeFilename(subject)
-      let filenameBase = formattedDate + ' - ' + safeSubject + ' - ' + (msg.getId ? msg.getId() : '')
+      let filenameBase = formattedDate + ' - ' + safeSubject
       let attachments = msg.getAttachments()
       let savedAttachmentNames = []
 
@@ -80,12 +85,29 @@ function archiveHRNews(startDate, endDate, sender, subjectKeyword, folderId) {
   Logger.log('Saved %d PDFs', saved.length)
 }
 
+/**
+ * Convenience wrapper around archiveEmails() to get emails for a full year.
+ * @param {number} year
+ * @param {string} sender
+ * @param {string} subjectKeyword
+ * @param {string} folderId
+ * @returns {undefined}
+ */
 function archiveYear(year, sender, subjectKeyword, folderId) {
   if (!year || isNaN(year)) throw new Error('Provide a numeric year, e.g. archiveYear(2024)')
   // Note that Gmail 'after:' includes the date given; 'before:' excludes the date.
   let start = year + '-01-01'
   let end = year + 1 + '-01-01'
-  return archiveHRNews(start, end, sender, subjectKeyword, folderId)
+  return archiveEmails(start, end, sender, subjectKeyword, folderId)
+}
+
+/**
+ * Specifically archive HR newsletters for a given year.
+ * @param {number} year
+ * @returns {undefined}
+ */
+function archiveHRYear(year) {
+  return archiveYear(year, 'hr@cca.edu', 'HR NEWS', folders["HR News Archive"])
 }
 
 /* ---------------------- Helper functions ---------------------- */
