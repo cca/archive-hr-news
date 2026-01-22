@@ -38,7 +38,7 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
   Logger.log('Gmail query: %s', query)
 
   let threads = GmailApp.search(query, 0, 500) // adjust limit if needed
-  Logger.log('Found %d threads', threads.length)
+  Logger.log('Found %d threads', Math.floor(threads.length))
 
   let folder = DriveApp.getFolderById(folderId)
   let saved = []
@@ -82,7 +82,7 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
     })
   })
 
-  Logger.log('Saved %d PDFs', saved.length)
+  Logger.log('Saved %d PDFs', Math.floor(saved.length))
 }
 
 /**
