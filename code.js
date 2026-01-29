@@ -6,21 +6,23 @@
  * - If folderId is null, a folder named 'email@cca.edu Email Archive' is created in your Drive root or reused if it already exists there.
  */
 
+// Print more messages to the log
+const DEBUG = true
+
 // These folders exist in ephetteplace Drive
 const folders = {
+  "Email Archive Tests": "1PNkVdj0O-Ky5XOhrZ06n0qVcHrAnQ3OV",
   "HR News Archive": "1OeKtq6FnprqLo7iu8-eyqOx3HzuFBPh0",
-  "President's Office Email Archive": "1z7oiwjQIwnQ_Orq2nsp80q0qx9bqoKPd"
+  "President's Office Email Archive": "1z7oiwjQIwnQ_Orq2nsp80q0qx9bqoKPd",
 }
 
 // archive HR newsletters
-archiveHRYear(2025)
-// archive President's emails
-// archiveEmails('2025-01-01', '2026-01-01', 'presidents-office@cca.edu', null, folders["President's Office Email Archive"])
+// archiveHRYear(2025)
+// Test archiving President's Office emails for 2025
+archiveEmails('2025-01-01', '2026-01-01', 'presidents-office@cca.edu', null, folders["Email Archive Tests"])
 
 function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
-  if (!sender) {
-    throw new Error('sender email is required')
-  }
+  if (!sender) throw new Error('sender email is required')
   // Note that GmailApp 'after:' includes the date given; 'before:' excludes the date.
   if (!startDate || !startDate.match(/^\d{4}\-\d{2}\-\d{2}$/)) {
     throw new Error('startDate is required (format YYYY-MM-DD). Use archiveYear(year) to archive a full year.')
@@ -35,17 +37,20 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
   subjectKeyword = subjectKeyword || ''
 
   let query = 'from:' + sender + ' subject:"' + subjectKeyword + '" after:' + startDate + ' before:' + endDate
-  Logger.log('Gmail query: %s', query)
+  log(`Gmail query: ${query}`)
 
+  // Gmail.Users.Messages.list is an alternative approach
   let threads = GmailApp.search(query, 0, 500) // adjust limit if needed
-  Logger.log('Found %d threads', Math.floor(threads.length))
+  log(`Found ${Math.floor(threads.length)} threads`)
 
   let folder = DriveApp.getFolderById(folderId)
-  let saved = []
+  let saved = 0
 
   threads.forEach(function(thread) {
     let messages = thread.getMessages()
-    messages.forEach(function(msg) {
+    messages.forEach(function (msg) {
+      // TODO only archive messages FROM sender
+      // See 2025-01-27 Denise Newman thread; rn we're archiving staff responses to prez office email
       let msgDate = msg.getDate()
       let formattedDate = Utilities.formatDate(msgDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
       let subject = msg.getSubject() || '(no subject)'
@@ -57,11 +62,18 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
       // Save attachments (if any) to folder
       attachments.forEach(function(att) {
         try {
+          log(`Saving attachment: ${att.getName()} ${att.getContentType()} ${att.getSize()} bytes`, true)
+          // folder.CreateFile accepts blob of any size but has no other parameters
           let attFile = folder.createFile(att.copyBlob())
+          attFile.setDescription('Attachment from email dated ' + formattedDate + ' with subject "' + subject + '"')
+          attFile.setName(att.getName())
           // If a file with same name exists, Drive appends (1), but we still record the name
+          // ! If the name we saved is different then the HTML reference will be wrong right?
+          // ! Embedded images are named "image" without a file extension, or maybe named their alt text?
+          // ! But that is usually "image". We should name images by hash with correct extension
           savedAttachmentNames.push(attFile.getName())
         } catch (e) {
-          Logger.log('Failed saving attachment for %s: %s', filenameBase, e && e.message)
+          log(`Failed saving attachment for ${filenameBase}: ${e && e.message}`, true)
         }
       })
 
@@ -71,18 +83,19 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
       // Create HTML blob and convert to PDF
       try {
         let htmlBlob = Utilities.newBlob(html, 'text/html', filenameBase + '.html')
+        if (DEBUG) folder.createFile(htmlBlob) // save HTML for debugging
         // Convert HTML blob to PDF
         let pdfBlob = htmlBlob.getAs('application/pdf').setName(filenameBase + '.pdf')
         let pdfFile = folder.createFile(pdfBlob)
-        saved.push({ messageId: msg.getId ? msg.getId() : null, pdfId: pdfFile.getId(), pdfName: pdfFile.getName() })
-        Logger.log('Saved PDF: %s', pdfFile.getName())
+        saved++
+        log(`Saved PDF: ${pdfFile.getName()}`, true)
       } catch (e) {
-        Logger.log('Failed converting/saving PDF for %s: %s', filenameBase, e && e.message)
+        log(`Failed converting/saving PDF for ${filenameBase}: ${e && e.message}`, true)
       }
     })
   })
 
-  Logger.log('Saved %d PDFs', Math.floor(saved.length))
+  log(`Saved ${saved} PDFs`)
 }
 
 /**
@@ -112,6 +125,13 @@ function archiveHRYear(year) {
 
 /* ---------------------- Helper functions ---------------------- */
 
+// Debug-aware logging, log('msg') logs 'msg'
+// while log('msg', true) only logs if DEBUG is true
+function log(msg, obeyDebug = false) {
+  if (obeyDebug && !DEBUG) return
+  Logger.log(msg)
+}
+
 function getOrCreateFolderByName(name) {
   let folders = DriveApp.getFoldersByName(name)
   if (folders.hasNext()) return folders.next()
@@ -135,6 +155,8 @@ function buildMessageHtml(msg, attachmentNames) {
     '<strong>Subject:</strong> ' + escapeHtml(msg.getSubject() || '') + '<br>' +
     '</div>'
 
+  // TODO We could also save the plain body while debugging? Or there could be a toggle elsewhere to save plain text only?
+  // ! I don't think msg.getBody is ever false, nor is the condition below a good way to check for plain text
   let bodyHtml = msg.getBody ? msg.getBody() : escapeHtml(msg.getPlainBody ? msg.getPlainBody() : '(no body)')
   // If bodyHtml is plain-text, wrap in <pre>
   if (!/<[a-z][\s\S]*>/i.test(bodyHtml)) {
@@ -150,12 +172,11 @@ function buildMessageHtml(msg, attachmentNames) {
 
   let footer = '<div style="margin-top:16px;font-size:10px;color:#666;">Archived via Apps Script on ' + escapeHtml(new Date().toString()) + '</div>'
 
-  let html = '<!doctype html><html><head><meta charset="utf-8"><title>'
+  return '<!doctype html><html><head><meta charset="utf-8"><title>'
     + escapeHtml(msg.getSubject() || '')
     + '</title></head><body>'
     + headersHtml + '<hr>' + bodyHtml
     + attachmentsHtml + footer + '</body></html>'
-  return html
 }
 
 function escapeHtml(s) {
