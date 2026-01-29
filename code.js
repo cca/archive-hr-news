@@ -19,7 +19,7 @@ const folders = {
 // archive HR newsletters
 // archiveHRYear(2025)
 // Test archiving President's Office emails for 2025
-archiveEmails('2025-01-01', '2026-01-01', 'presidents-office@cca.edu', null, folders["Email Archive Tests"])
+archiveEmails('2025-08-11', '2025-08-13', 'presidents-office@cca.edu', null, folders["Email Archive Tests"])
 
 function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
   if (!sender) throw new Error('sender email is required')
@@ -39,7 +39,8 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
   let query = 'from:' + sender + ' subject:"' + subjectKeyword + '" after:' + startDate + ' before:' + endDate
   log(`Gmail query: ${query}`)
 
-  // Gmail.Users.Messages.list is an alternative approach
+  // Gmail.Users.Messages.list is an alternative approach, since we already need the advanced API
+  // https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list
   let threads = GmailApp.search(query, 0, 500) // adjust limit if needed
   log(`Found ${Math.floor(threads.length)} threads`)
 
@@ -50,44 +51,83 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
     let messages = thread.getMessages()
     messages.forEach(function (msg) {
       // TODO only archive messages FROM sender
-      // See 2025-01-27 Denise Newman thread; rn we're archiving staff responses to prez office email
-      let msgDate = msg.getDate()
-      let formattedDate = Utilities.formatDate(msgDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      // ! See 2025-01-27 Denise Newman thread; rn we're archiving staff responses to prez office email
+      let formattedDate = Utilities.formatDate(msg.getDate(), Session.getScriptTimeZone(), 'yyyy-MM-dd')
       let subject = msg.getSubject() || '(no subject)'
       let safeSubject = sanitizeFilename(subject)
       let filenameBase = formattedDate + ' - ' + safeSubject
-      // Below includes embedded images but it is possible to differentiate attachments vs. embedded images, see:
-      // https://developers.google.com/apps-script/reference/gmail/gmail-message#getattachmentsoptions
-      let attachments = msg.getAttachments()
       let savedAttachments = []
+      let contentIdMap = {} // map of contentId to saved attachment File
+      // Use Advanced Gmail API to get the MIME parts, necessary for CIDs to embed images
+      // https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/get
+      const message = Gmail.Users.Messages.get('me', msg.getId())
+      // Every message has a payload = parent MessagePart with child parts array of msg & attachments
+      const parts = message.payload.parts || []
 
-      // Save attachments (if any) to folder
-      attachments.forEach(function (att) {
-        let mimeType = att.getContentType()
+      // Iterate over message parts, saving attachments & embedded images, while mapping CIDs for embedded images
+      // Embedded image parts have a headers array like:
+      // [ {value: 'image/png; name=image', name: 'Content-Type'},
+      // {name: 'Content-Disposition', value: 'inline; filename=image'},
+      // {name: 'Content-Transfer-Encoding', value: 'base64'},
+      // {value: '<ii_me8xoqf40>', name: 'Content-ID'},
+      // {value: 'ii_me8xoqf40', name: 'X-Attachment-Id'} ]
+      parts.forEach(function (part) {
+        if (!part.filename) return // message body lacks a filename
+
+        // Find the base64-encoded attachment data
+        // parts EITHER have body.data or body.attachmentID, in latter case we must get the attachment via API
+        let data = null // byte array NOT base64 string
+        if (part.body.attachmentId) {
+          let attachment = Gmail.Users.Messages.Attachments.get('me', msg.getId(), part.body.attachmentId)
+          data = attachment.data
+        } else {
+          data = Utilities.base64Decode(part.body.data)
+        }
+        if (!data) {
+          log(`No data for attachment part: ${part.filename} ${part.mimeType}`)
+          return
+        }
+
         try {
-          log(`Saving attachment: ${att.getName()} ${mimeType} ${att.getSize()} bytes`, true)
+          log(`Saving attachment: ${part.filename} ${part.mimeType} ${part.body.size} bytes`, true)
+
+          // Save part file to Drive
+          const blob = Utilities.newBlob(data, part.mimeType, part.filename)
           // folder.CreateFile accepts blob of any size but has no other parameters
-          let file = folder.createFile(att.copyBlob())
+          let file = folder.createFile(blob)
           file.setDescription('Attachment from email dated ' + formattedDate + ' with subject "' + subject + '"')
+
           // Embedded images seem to be named "image" without a file extension, or maybe named after their
-          // alt text, but that is usually "image". We rename to be disambiguate.
-          if (file.getName().trim().toLowerCase() === 'image') {
+          // alt text, but that is usually "image". We rename them to disambiguate.
+          if (part.filename === 'image') {
             let ext = ''
-            let hash = att.getHash() // GmailAttachment has getHash method but File does not
-            if (mimeType && mimeType.match(/^image\//)) {
-              ext = mimeType.split('/')[1]
+            if (part.mimeType && part.mimeType.match(/^image\//)) {
+              ext = part.mimeType.split('/')[1]
             }
             // This naming convention collocates the image with the email & avoids name collisions
-            file.setName(formattedDate + '-image-' + hash.substring(0, 6) + (ext ? '.' + ext : ''))
+            const rand = Math.floor(Math.random() * 100000).toString().padStart(5, '0')
+            file.setName(formattedDate + '-image-' + rand + (ext ? '.' + ext : ''))
+          } else {
+            file.setName(sanitizeFilename(formattedDate + part.filename))
           }
           savedAttachments.push(file)
+
+          // Map Content-ID to saved file for embedded images, this data is only in the part headers which
+          // are only available in the advanced gmail API. It looks like an embedded image part has two CID
+          // headers: [{value: '<CID>', name: 'Content-ID'}, {value: 'CID', name: 'X-Attachment-Id'}]
+          let cidHeader = part.headers.find(h => h.name === 'Content-ID')
+          if (!cidHeader) cidHeader = part.headers.find(h => h.name === 'X-Attachment-Id')
+          if (cidHeader && file) {
+            let cid = cidHeader.value.replace(/[<>]/g, '')
+            contentIdMap[cid] = file
+          }
         } catch (e) {
           log(`Failed saving attachment for ${filenameBase}: ${e && e.message}`)
         }
       })
 
       // Build HTML snapshot
-      let html = buildMessageHtml(msg, savedAttachments)
+      let html = buildMessageHtml(msg, savedAttachments, contentIdMap)
 
       // Create HTML blob and convert to PDF
       try {
@@ -154,7 +194,34 @@ function sanitizeFilename(name) {
   return s
 }
 
-function buildMessageHtml(msg, attachments) {
+/**
+ * Replace cid: references in HTML with base64-encoded data URIs for images
+ * @param {string} html - HTML content
+ * @param {object} contentIdMap - hash map of contentId to Drive File
+ * @returns {string} HTML with cid: references swapped for data URIs
+ */
+function convertCIDtoBase64(html, contentIdMap) {
+  return html.replace(/cid:([^'">\s]+)/g, function(match, cid) {
+    let file = contentIdMap[cid]
+    if (file) {
+      let blob = file.getBlob()
+      let base64Data = Utilities.base64Encode(blob.getBytes())
+      return 'data:' + blob.getContentType() + ';base64,' + base64Data
+    } else {
+      return match // leave unchanged
+    }
+  })
+}
+
+/**
+ * Decorate the email message body to be a complete HTML representation with
+ * select headers, embedded images, and a list of attachments.
+ * @param {object} msg - GmailMessage object https://developers.google.com/apps-script/reference/gmail/gmail-message
+ * @param {array} attachments - Array of GmailAttachment objects https://developers.google.com/apps-script/reference/gmail/gmail-attachment
+ * @param {object} contentIdMap - map of contentId to Drive File for embedded images
+ * @returns {string} HTML email
+ */
+function buildMessageHtml(msg, attachments, contentIdMap) {
   // Build a simple, printable HTML snapshot. msg.getBody() returns HTML body when available.
   let headersHtml = '<div style="font-family: Arial, sans-serif; margin-bottom:12px;">' +
     '<strong>From:</strong> ' + escapeHtml(msg.getFrom()) + '<br>' +
@@ -170,6 +237,10 @@ function buildMessageHtml(msg, attachments) {
   // If bodyHtml is plain-text, wrap in <pre>
   if (!/<[a-z][\s\S]*>/i.test(bodyHtml)) {
     bodyHtml = '<pre style="white-space:pre-wrap;font-family:Arial,Helvetica,sans-serif;">' + escapeHtml(bodyHtml) + '</pre>'
+  }
+
+  if (contentIdMap) {
+    bodyHtml = convertCIDtoBase64(bodyHtml, contentIdMap)
   }
 
   let attachmentsHtml = ''
