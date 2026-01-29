@@ -56,29 +56,38 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
       let subject = msg.getSubject() || '(no subject)'
       let safeSubject = sanitizeFilename(subject)
       let filenameBase = formattedDate + ' - ' + safeSubject
+      // Below includes embedded images but it is possible to differentiate attachments vs. embedded images, see:
+      // https://developers.google.com/apps-script/reference/gmail/gmail-message#getattachmentsoptions
       let attachments = msg.getAttachments()
-      let savedAttachmentNames = []
+      let savedAttachments = []
 
       // Save attachments (if any) to folder
-      attachments.forEach(function(att) {
+      attachments.forEach(function (att) {
+        let mimeType = att.getContentType()
         try {
-          log(`Saving attachment: ${att.getName()} ${att.getContentType()} ${att.getSize()} bytes`, true)
+          log(`Saving attachment: ${att.getName()} ${mimeType} ${att.getSize()} bytes`, true)
           // folder.CreateFile accepts blob of any size but has no other parameters
-          let attFile = folder.createFile(att.copyBlob())
-          attFile.setDescription('Attachment from email dated ' + formattedDate + ' with subject "' + subject + '"')
-          attFile.setName(att.getName())
-          // If a file with same name exists, Drive appends (1), but we still record the name
-          // ! If the name we saved is different then the HTML reference will be wrong right?
-          // ! Embedded images are named "image" without a file extension, or maybe named their alt text?
-          // ! But that is usually "image". We should name images by hash with correct extension
-          savedAttachmentNames.push(attFile.getName())
+          let file = folder.createFile(att.copyBlob())
+          file.setDescription('Attachment from email dated ' + formattedDate + ' with subject "' + subject + '"')
+          // Embedded images seem to be named "image" without a file extension, or maybe named after their
+          // alt text, but that is usually "image". We rename to be disambiguate.
+          if (file.getName().trim().toLowerCase() === 'image') {
+            let ext = ''
+            let hash = att.getHash() // GmailAttachment has getHash method but File does not
+            if (mimeType && mimeType.match(/^image\//)) {
+              ext = mimeType.split('/')[1]
+            }
+            // This naming convention collocates the image with the email & avoids name collisions
+            file.setName(formattedDate + '-image-' + hash.substring(0, 6) + (ext ? '.' + ext : ''))
+          }
+          savedAttachments.push(file)
         } catch (e) {
-          log(`Failed saving attachment for ${filenameBase}: ${e && e.message}`, true)
+          log(`Failed saving attachment for ${filenameBase}: ${e && e.message}`)
         }
       })
 
       // Build HTML snapshot
-      let html = buildMessageHtml(msg, savedAttachmentNames)
+      let html = buildMessageHtml(msg, savedAttachments)
 
       // Create HTML blob and convert to PDF
       try {
@@ -90,7 +99,7 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
         saved++
         log(`Saved PDF: ${pdfFile.getName()}`, true)
       } catch (e) {
-        log(`Failed converting/saving PDF for ${filenameBase}: ${e && e.message}`, true)
+        log(`Failed converting/saving PDF for ${filenameBase}: ${e && e.message}`)
       }
     })
   })
@@ -145,7 +154,7 @@ function sanitizeFilename(name) {
   return s
 }
 
-function buildMessageHtml(msg, attachmentNames) {
+function buildMessageHtml(msg, attachments) {
   // Build a simple, printable HTML snapshot. msg.getBody() returns HTML body when available.
   let headersHtml = '<div style="font-family: Arial, sans-serif; margin-bottom:12px;">' +
     '<strong>From:</strong> ' + escapeHtml(msg.getFrom()) + '<br>' +
@@ -164,9 +173,9 @@ function buildMessageHtml(msg, attachmentNames) {
   }
 
   let attachmentsHtml = ''
-  if (attachmentNames && attachmentNames.length) {
+  if (attachments && attachments.length) {
     attachmentsHtml = '<div style="margin-top:12px;"><strong>Attachments saved:</strong><ul>'
-    attachmentNames.forEach(function(n) { attachmentsHtml += '<li>' + escapeHtml(n) + '</li>'; })
+    attachments.forEach(function(file) { attachmentsHtml += '<li>' + escapeHtml(file.getName()) + '</li>'; })
     attachmentsHtml += '</ul></div>'
   }
 
