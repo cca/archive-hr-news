@@ -175,10 +175,10 @@ function archiveHRYear(year) {
 /* ---------------------- Helper functions ---------------------- */
 
 // Debug-aware logging, log('msg') logs 'msg'
-// while log('msg', true) only logs if DEBUG is true
+// while log('msg', true) only logs 'msg' if DEBUG is true
 function log(msg, obeyDebug = false) {
   if (obeyDebug && !DEBUG) return
-  Logger.log(msg)
+  console.log(msg)
 }
 
 function getOrCreateFolderByName(name) {
