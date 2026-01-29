@@ -60,9 +60,9 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
       let contentIdMap = {} // map of contentId to saved attachment File
       // Use Advanced Gmail API to get the MIME parts, necessary for CIDs to embed images
       // https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/get
-      const message = Gmail.Users.Messages.get('me', msg.getId())
+      const advancedMessage = Gmail.Users.Messages.get('me', msg.getId())
       // Every message has a payload = parent MessagePart with child parts array of msg & attachments
-      const parts = message.payload.parts || []
+      const parts = advancedMessage.payload.parts || []
 
       // Iterate over message parts, saving attachments & embedded images, while mapping CIDs for embedded images
       // Embedded image parts have a headers array like:
@@ -129,13 +129,18 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
       // Build HTML snapshot
       let html = buildMessageHtml(msg, savedAttachments, contentIdMap)
 
-      // Create HTML blob and convert to PDF
+      // Save 3 files: HTML, EML, and a PDF created from HTML
       try {
-        let htmlBlob = Utilities.newBlob(html, 'text/html', filenameBase + '.html')
-        if (DEBUG) folder.createFile(htmlBlob) // save HTML for debugging
-        // Convert HTML blob to PDF
-        let pdfBlob = htmlBlob.getAs('application/pdf').setName(filenameBase + '.pdf')
-        let pdfFile = folder.createFile(pdfBlob)
+        // Save EML file
+        const rawContent = msg.getRawContent()
+        const emlBlob = Utilities.newBlob(rawContent, 'message/rfc822', filenameBase + '.eml')
+        folder.createFile(emlBlob)
+        // Save HTML file
+        const htmlBlob = Utilities.newBlob(html, 'text/html', filenameBase + '.html')
+        folder.createFile(htmlBlob)
+        // Convert HTML blob to PDF and save
+        const pdfBlob = htmlBlob.getAs('application/pdf').setName(filenameBase + '.pdf')
+        const pdfFile = folder.createFile(pdfBlob)
         saved++
         log(`Saved PDF: ${pdfFile.getName()}`, true)
       } catch (e) {
