@@ -118,7 +118,7 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
             const rand = Math.floor(Math.random() * 100000).toString().padStart(5, '0')
             file.setName(formattedDate + '-image-' + rand + (ext ? '.' + ext : ''))
           } else {
-            file.setName(sanitizeFilename(formattedDate + part.filename))
+            file.setName(sanitizeFilename(formattedDate + ' ' + part.filename))
           }
           savedAttachments.push(file)
 
