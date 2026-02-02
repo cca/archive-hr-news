@@ -4,6 +4,12 @@
  * Notes:
  * - startDate and endDate are strings 'YYYY-MM-DD'.
  * - If folderId is null, a folder named 'email@cca.edu Email Archive' is created in your Drive root or reused if it already exists there.
+ * Google API References:
+ * - Drive App: https://developers.google.com/apps-script/reference/drive/drive-app
+ * - Folder Class: https://developers.google.com/apps-script/reference/drive/folder
+ * - Gmail App: https://developers.google.com/apps-script/reference/gmail
+ * - GmailMessage Class: https://developers.google.com/apps-script/reference/gmail/gmail-message
+ * - Advanced Gmail API: https://developers.google.com/workspace/gmail/api/reference/rest
  */
 
 // Print more messages to the log
