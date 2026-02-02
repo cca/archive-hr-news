@@ -21,6 +21,16 @@ const folders = {
 // Test archiving President's Office emails for 2025
 archiveEmails('2025-08-11', '2025-08-13', 'presidents-office@cca.edu', null, folders["Tests"])
 
+/**
+ * Archive emails from your Gmail inbox to Drive as dated PDFs, along with EML and HTML files.
+ * The function arguments are used to filter emails.
+ * @param {string} startDate - inclusive start date (YYYY-MM-DD)
+ * @param {string} endDate - exclusive end date (YYYY-MM-DD)
+ * @param {string} sender - email address
+ * @param {(string|null|undefined)} subjectKeyword - optional subject keyword(s)
+ * @param {(string|null|undefined)} folderId - optional Drive folder ID to save files into
+ * @returns {undefined}
+ */
 function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
   if (!sender) throw new Error('sender email is required')
   // Note that GmailApp 'after:' includes the date given; 'before:' excludes the date.
@@ -179,19 +189,34 @@ function archiveHRYear(year) {
 
 /* ---------------------- Helper functions ---------------------- */
 
-// Debug-aware logging, log('msg') logs 'msg'
-// while log('msg', true) only logs 'msg' if DEBUG is true
+/**
+ * Debug-aware logging, log('msg') logs 'msg'
+ * while log('msg', true) only logs 'msg' if DEBUG is true
+ * @param {string} msg
+ * @param {boolean} obeyDebug only log if DEBUG is true
+ * @returns {undefined}
+ */
 function log(msg, obeyDebug = false) {
   if (obeyDebug && !DEBUG) return
   console.log(msg)
 }
 
+/**
+ * Get Drive folder, creating it if it does not exist.
+ * @param {string} name
+ * @returns {GoogleAppsScript.Drive.Folder}
+ */
 function getOrCreateFolderByName(name) {
   let folders = DriveApp.getFoldersByName(name)
   if (folders.hasNext()) return folders.next()
   return DriveApp.createFolder(name)
 }
 
+/**
+ * Sanitize a filename by removing or replacing characters that are not allowed in filenames.
+ * @param {string} name - original filename
+ * @returns {string} sanitized filename
+ */
 function sanitizeFilename(name) {
   // remove slashes and other awkward filesystem chars, limit length
   let s = name.replace(/[\\\/:\*\?"<>\|]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -264,6 +289,12 @@ function buildMessageHtml(msg, attachments, contentIdMap) {
     + attachmentsHtml + footer + '</body></html>'
 }
 
+/**
+ * Escape HTML special characters to prevent HTML injection,
+ * e.g. in email headers (subject, from, attachment names).
+ * @param {(string|null|undefined)} s - the string to escape
+ * @returns {string} escaped string
+ */
 function escapeHtml(s) {
   if (s === null || s === undefined) return ''
   return String(s)
