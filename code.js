@@ -11,15 +11,15 @@ const DEBUG = true
 
 // These folders exist in ephetteplace Drive
 const folders = {
-  "Email Archive Tests": "1PNkVdj0O-Ky5XOhrZ06n0qVcHrAnQ3OV",
-  "HR News Archive": "1OeKtq6FnprqLo7iu8-eyqOx3HzuFBPh0",
-  "President's Office Email Archive": "1z7oiwjQIwnQ_Orq2nsp80q0qx9bqoKPd",
+  "Tests": "1PNkVdj0O-Ky5XOhrZ06n0qVcHrAnQ3OV",
+  "HR News": "1OeKtq6FnprqLo7iu8-eyqOx3HzuFBPh0",
+  "President's Office": "1z7oiwjQIwnQ_Orq2nsp80q0qx9bqoKPd",
 }
 
 // archive HR newsletters
 // archiveHRYear(2025)
 // Test archiving President's Office emails for 2025
-archiveEmails('2025-08-11', '2025-08-13', 'presidents-office@cca.edu', null, folders["Email Archive Tests"])
+archiveEmails('2025-08-11', '2025-08-13', 'presidents-office@cca.edu', null, folders["Tests"])
 
 function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
   if (!sender) throw new Error('sender email is required')
@@ -149,7 +149,7 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
     })
   })
 
-  log(`Saved ${saved} PDFs`)
+  log(`Saved ${saved} emails`)
 }
 
 /**
@@ -174,7 +174,7 @@ function archiveYear(year, sender, subjectKeyword, folderId) {
  * @returns {undefined}
  */
 function archiveHRYear(year) {
-  return archiveYear(year, 'hr@cca.edu', 'HR NEWS', folders["HR News Archive"])
+  return archiveYear(year, 'hr@cca.edu', 'HR NEWS', folders["HR News"])
 }
 
 /* ---------------------- Helper functions ---------------------- */
