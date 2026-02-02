@@ -66,8 +66,11 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
   threads.forEach(function(thread) {
     let messages = thread.getMessages()
     messages.forEach(function (msg) {
-      // TODO only archive messages FROM sender
-      // ! See 2025-01-27 Denise Newman thread; rn we're archiving staff responses to prez office email
+      // Only archive messages from sender, e.g. 2025-01-27 Denise Newman thread w/ staff replies
+      if (msg.getFrom().toLowerCase().indexOf(`<${sender.toLowerCase()}>`) === -1) {
+        return log(`Skipping mail from ${msg.getFrom()}`, true)
+      }
+
       let formattedDate = Utilities.formatDate(msg.getDate(), Session.getScriptTimeZone(), 'yyyy-MM-dd')
       let subject = msg.getSubject() || '(no subject)'
       let safeSubject = sanitizeFilename(subject)
