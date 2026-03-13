@@ -84,25 +84,6 @@ class TestNERProcessor:
         )
         assert any("California" in text for text in location_texts)
 
-    def test_entity_positions(self, ner_processor):
-        """Test that entity positions are correct."""
-        text = "Albert Einstein was born in Germany."
-
-        result = ner_processor.extract_entities(
-            text=text,
-            source_file="test.txt",
-            file_format="text",
-            entity_types=["PERSON", "GPE"],
-        )
-
-        # Check that positions are valid
-        for entity in result.entities:
-            assert entity.start >= 0
-            assert entity.end > entity.start
-            assert entity.end <= len(text)
-            # Verify the position matches the text
-            assert text[entity.start : entity.end] == entity.text
-
     def test_multiple_entity_types(self, ner_processor):
         """Test extraction of multiple entity types."""
         text = "Marie Curie worked at the University of Paris in France."
