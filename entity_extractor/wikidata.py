@@ -2,7 +2,6 @@
 
 import time
 from typing import Any, Dict, Optional
-from urllib.parse import quote
 
 import requests
 
@@ -10,12 +9,48 @@ from entity_extractor import __version__
 
 from .models import Entity
 
+# CCA and certain figures will come up often
+# This way we know we get them right and save requests
+cca_entity: Entity = Entity(
+    text="CCA",
+    label="ORG",
+    wikidata_id="Q1026804",
+    wikidata_url="http://www.wikidata.org/entity/Q1026804",
+    wikidata_description='"private art and design school in California, United States (founded 1907, opened new additional permanent campus in San Francisco in 1996)"',
+)
+howse_entity: Entity = Entity(
+    text="David C. Howse",
+    label="PERSON",
+    wikidata_id="Q131593045",
+    wikidata_url="http://www.wikidata.org/entity/Q131593045",
+    wikidata_description="10th president of the California College of the Arts",
+)
+entity_cache: dict[str, Entity] = {
+    "CCA": cca_entity,
+    "CCAC": cca_entity,
+    "California College of the Arts": cca_entity,
+    "California College of Art and Craft": cca_entity,
+    "David C. Howse": howse_entity,
+    "David Howse": howse_entity,
+    "Stephen Beal": Entity(
+        text="Stephen Beal",
+        label="PERSON",
+        wikidata_id="Q7608685",
+        wikidata_url="http://www.wikidata.org/entity/Q7608685",
+        wikidata_description="American artist",
+    ),
+}
+
 
 class WikidataLinker:
     """Links named entities to Wikidata."""
 
+    # https://www.wikidata.org/w/api.php?action=help&modules=wbsearchentities
     BASE_URL = "https://www.wikidata.org/w/api.php"
     ENTITY_URL = "https://www.wikidata.org/wiki/"
+    # See Wikimedia User-Agent policy
+    # https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy
+    USER_AGENT = f"EntityExtractor/{__version__} (https://libraries.cca.edu; ephetteplace@cca.edu) (Python/requests)"
 
     def __init__(self, delay: float = 0.1, entity_types: Optional[list[str]] = None):
         """
@@ -28,21 +63,14 @@ class WikidataLinker:
         self.delay = delay
         self.entity_types: list[str] | None = entity_types
         self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "User-Agent": f"EntityExtractor/{__version__} (Educational; Python/requests)"
-            }
-        )
+        self.session.headers.update({"User-Agent": self.USER_AGENT})
 
-    def search_entity(
-        self, query: str, entity_type: str | None = None
-    ) -> Optional[Dict[str, Any]]:
+    def search_entity(self, query: str) -> Optional[Dict[str, Any]]:
         """
         Search for an entity in Wikidata.
 
         Args:
             query: Entity name to search for
-            entity_type: Type of entity (PERSON, ORG, etc.) - used for filtering
 
         Returns:
             Dictionary with entity info or None if not found
@@ -51,11 +79,17 @@ class WikidataLinker:
             "action": "wbsearchentities",
             "format": "json",
             "language": "en",
-            "search": quote(query),
+            # TODO could try to look through multiple results for best match
             "limit": 1,
+            "search": query,
+            # https://www.wikidata.org/wiki/Help:Data_type
+            # this way we don't get properties in search results
+            "type": "item",
         }
 
         try:
+            # Example request URL:
+            # https://www.wikidata.org/w/api.php?action=wbsearchentities&search=CCAC&language=en&format=json&limit=1&type=item
             response: requests.Response = self.session.get(
                 self.BASE_URL, params=params, timeout=10
             )
@@ -92,16 +126,18 @@ class WikidataLinker:
             return entity
 
         enriched_entity: Optional[Entity] = None
-        result: Dict[str, Any] | None = self.search_entity(entity.text, entity.label)
-
-        if result:
-            enriched_entity = Entity(
-                text=entity.text,
-                label=entity.label,
-                wikidata_id=result["id"],
-                wikidata_url=result["url"],
-                wikidata_description=result["description"],
-            )
+        if entity.text in entity_cache:
+            enriched_entity = entity_cache[entity.text]
+        else:
+            result: Dict[str, Any] | None = self.search_entity(entity.text)
+            if result:
+                enriched_entity = Entity(
+                    text=entity.text,
+                    label=entity.label,
+                    wikidata_id=result["id"],
+                    wikidata_url=result["url"],
+                    wikidata_description=result["description"],
+                )
 
         return enriched_entity if enriched_entity else entity
 
