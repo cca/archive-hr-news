@@ -135,3 +135,12 @@ class TestEmailParsers:
         # Should extract title as subject
         assert subject is not None
         assert "Simple HTML Email" in subject
+
+    def test_entities_with_newlines_in_name(self):
+        """We don't want John Doe and John\nDoe to be considered different entities."""
+        test_file = FIXTURES_DIR / "newline_entities.eml"
+        assert test_file.exists(), f"Fixture not found: {test_file}"
+
+        text, subject = parse_eml(test_file)
+        # newline in file converted to space
+        assert "Eric Phetteplace and Eric Phetteplace are the same!" in text
