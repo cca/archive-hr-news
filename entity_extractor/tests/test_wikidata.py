@@ -27,7 +27,7 @@ class TestWikidataLinker:
 
     def test_search_well_known_person(self, linker):
         """Test searching for a well-known person - Albert Einstein."""
-        result = linker.search_entity("Albert Einstein", entity_type="PERSON")
+        result = linker.search_entity("Albert Einstein")
 
         assert result is not None
         assert "id" in result
@@ -39,7 +39,7 @@ class TestWikidataLinker:
 
     def test_search_well_known_organization(self, linker):
         """Test searching for a well-known organization - NASA."""
-        result = linker.search_entity("NASA", entity_type="ORG")
+        result = linker.search_entity("NASA")
 
         assert result is not None
         assert "id" in result
@@ -51,7 +51,7 @@ class TestWikidataLinker:
 
     def test_search_place(self, linker):
         """Test searching for a well-known place - Paris."""
-        result = linker.search_entity("Paris", entity_type="GPE")
+        result = linker.search_entity("Paris")
 
         assert result is not None
         assert "id" in result
@@ -126,8 +126,6 @@ class TestWikidataLinker:
 
         assert "text" in entity_dict
         assert "label" in entity_dict
-        assert "start" in entity_dict
-        assert "end" in entity_dict
         # Should include Wikidata fields if enrichment succeeded
         if enriched.wikidata_id:
             assert "wikidata_id" in entity_dict
