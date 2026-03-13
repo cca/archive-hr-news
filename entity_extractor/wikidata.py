@@ -15,14 +15,14 @@ cca_entity: Entity = Entity(
     text="CCA",
     label="ORG",
     wikidata_id="Q1026804",
-    wikidata_url="http://www.wikidata.org/entity/Q1026804",
+    wikidata_url="https://www.wikidata.org/entity/Q1026804",
     wikidata_description='"private art and design school in California, United States (founded 1907, opened new additional permanent campus in San Francisco in 1996)"',
 )
 howse_entity: Entity = Entity(
     text="David C. Howse",
     label="PERSON",
     wikidata_id="Q131593045",
-    wikidata_url="http://www.wikidata.org/entity/Q131593045",
+    wikidata_url="https://www.wikidata.org/entity/Q131593045",
     wikidata_description="10th president of the California College of the Arts",
 )
 entity_cache: dict[str, Entity] = {
@@ -36,7 +36,7 @@ entity_cache: dict[str, Entity] = {
         text="Stephen Beal",
         label="PERSON",
         wikidata_id="Q7608685",
-        wikidata_url="http://www.wikidata.org/entity/Q7608685",
+        wikidata_url="https://www.wikidata.org/entity/Q7608685",
         wikidata_description="American artist",
     ),
 }
@@ -98,18 +98,23 @@ class WikidataLinker:
 
             if data.get("search") and len(data["search"]) > 0:
                 result = data["search"][0]
+                concept_uri = result.get(
+                    "concepturi", f"{self.ENTITY_URL}{result['id']}"
+                )
+                if concept_uri.startswith("http://"):
+                    concept_uri = concept_uri.replace("http://", "https://")
                 return {
                     "id": result["id"],
-                    "url": result.get("concepturi", f"{self.ENTITY_URL}{result['id']}"),
+                    "url": concept_uri,
                     "description": result.get("description", ""),
                 }
-
-            time.sleep(self.delay)  # Rate limiting
             return None
 
         except Exception:
-            # Silently fail for now - linking is optional
+            # Fail silently - linking is optional
             return None
+        finally:
+            time.sleep(self.delay)  # Ensure delay even on failure
 
     def enrich_entity(self, entity: Entity) -> Entity:
         """

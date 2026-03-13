@@ -27,6 +27,7 @@ console = Console()
 
 
 @click.command()
+@click.help_option("-h", "--help")
 @click.argument("input_path", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--output-dir",
@@ -183,6 +184,8 @@ def process_file(
         )
 
     # Save to JSON
+    output_dir.mkdir(parents=True, exist_ok=True)
+    # ! Multiple runs, even using different formats, will overwrite existing entities files
     output_file = output_dir / f"{file_path.stem}.entities.json"
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(email_entities.to_dict(), f, indent=2, ensure_ascii=False)

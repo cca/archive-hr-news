@@ -30,7 +30,8 @@ class NERProcessor:
             except OSError:
                 raise RuntimeError(
                     f"spaCy model '{self.model_name}' not found. "
-                    f"Please run: python -m spacy download {self.model_name}"
+                    f"Please install the version mentioned in the README."
+                    f"Download like: python -m spacy download {self.model_name}"
                 )
         return self._nlp
 
@@ -39,8 +40,7 @@ class NERProcessor:
         text: str,
         source_file: str,
         file_format: str,
-        # Default to person, organization, country, and location entities
-        entity_types: List[str] = ["PERSON", "ORG", "GPE", "LOC"],
+        entity_types: List[str] | None = None,
         subject: str | None = None,
     ) -> EmailEntities:
         """
@@ -56,6 +56,10 @@ class NERProcessor:
         Returns:
             EmailEntities object containing extracted entities
         """
+        # Default to person, organization, country, and location entities
+        if not entity_types:
+            entity_types = ["PERSON", "ORG", "GPE", "LOC"]
+
         doc = self.nlp(text)
 
         entities: set[Entity] = set()
