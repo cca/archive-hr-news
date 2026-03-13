@@ -17,16 +17,7 @@ jobs:
           python-version: '3.12'
       - name: Install Ruff
         run: pip install ruff
-      - name: Run Ruff
+      - name: Run Ruff Linter
         run: ruff check entity_extractor/
-  format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - name: Install Black
-        run: pip install black
-      - name: Run Black
-        run: black --check --diff --fast  --no-color entity_extractor/
+      - name: Run Ruff Formatter
+        run: ruff format --check --diff entity_extractor/
