@@ -1,0 +1,29 @@
+From: simple-test@example.com
+To: recipient@example.com
+Subject: Simple Test Email
+Date: Mon, 01 Jan 2024 12:00:00 -0800
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="boundary123"
+
+--boundary123
+Content-Type: text/plain; charset=UTF-8
+
+This is a simple test email with plain text.
+
+Albert Einstein was a theoretical physicist.
+Marie Curie was a pioneering researcher.
+The United Nations is an international organization.
+
+--boundary123
+Content-Type: text/html; charset=UTF-8
+
+<html>
+<body>
+<p>This is a simple test email with HTML.</p>
+<p>Albert Einstein was a theoretical physicist.</p>
+<p>Marie Curie was a pioneering researcher.</p>
+<p>The United Nations is an international organization.</p>
+</body>
+</html>
+
+--boundary123--
