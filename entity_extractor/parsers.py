@@ -55,7 +55,9 @@ def parse_eml(file_path: Path) -> Tuple[str, Optional[str]]:
         except Exception:
             text_parts.append(str(msg))
 
-    text = "\n\n".join(text_parts)
+    text = " ".join(text_parts)
+    # Normalize whitespace, prevents newlines in the middle of names from creating dupes
+    text = text.replace("\n", " ")
     return text, subject
 
 

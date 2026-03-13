@@ -1,0 +1,9 @@
+From: test-sender@example.com
+To: test-recipient@example.com
+Subject: Newline Entities
+Date: Thu, 23 Oct 2014 10:29:03 -0700
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Eric Phetteplace and Eric
+Phetteplace are the same!
