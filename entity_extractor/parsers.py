@@ -9,6 +9,12 @@ import pdfplumber
 from bs4 import BeautifulSoup
 
 
+def strip_html_tags(text: str) -> str:
+    """Remove HTML tags from text."""
+    soup = BeautifulSoup(text, "html.parser")
+    return soup.get_text(separator=" ", strip=True)
+
+
 def parse_eml(file_path: Path) -> Tuple[str, Optional[str]]:
     """
     Parse an EML file and extract text content and subject.
@@ -29,18 +35,27 @@ def parse_eml(file_path: Path) -> Tuple[str, Optional[str]]:
 
     if msg.is_multipart():
         for part in msg.walk():
+            # Skip container parts
+            if part.is_multipart():
+                continue
+
+            # Skip attachments
+            disposition: str | None = part.get_content_disposition()
+            if disposition == "attachment":
+                continue
+
             content_type: str = part.get_content_type()
             if content_type == "text/plain":
                 try:
                     text_parts.append(part.get_content())
                 except Exception:
                     continue
+            # Some multipart emails have duplicate text/plain and text/html parts
+            # but since we dedupe entities we can take all of them
             elif content_type == "text/html":
-                # Fallback to HTML if no plain text
                 try:
                     html_content = part.get_content()
-                    soup = BeautifulSoup(html_content, "html.parser")
-                    text_parts.append(soup.get_text(separator=" ", strip=True))
+                    text_parts.append(strip_html_tags(html_content))
                 except Exception:
                     continue
     else:
@@ -48,8 +63,7 @@ def parse_eml(file_path: Path) -> Tuple[str, Optional[str]]:
         try:
             content = msg.get_content()
             if msg.get_content_type() == "text/html":
-                soup = BeautifulSoup(content, "html.parser")
-                text_parts.append(soup.get_text(separator=" ", strip=True))
+                text_parts.append(strip_html_tags(content))
             else:
                 text_parts.append(content)
         except Exception:
@@ -81,7 +95,7 @@ def parse_html(file_path: Path) -> Tuple[str, Optional[str]]:
         subject = title.get_text(strip=True)
 
     # Extract text content
-    text = soup.get_text(separator=" ", strip=True)
+    text = strip_html_tags(str(soup))
 
     return text, subject
 

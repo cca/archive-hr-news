@@ -18,8 +18,8 @@ extract-entities data/
 extract-entities data/email.eml
 # With Wikidata linking:
 extract-entities data/ --wikidata
-# Process only specific formats:
-extract-entities data/ --formats eml
+# Process a specific format:
+extract-entities data/ --format html
 ```
 
 ### CLI Options
@@ -27,7 +27,7 @@ extract-entities data/ --formats eml
 ```bash
 Options:
   -o, --output-dir PATH       Output directory for JSON files (default: same as input)
-  -f, --formats TEXT          Comma-separated list of file formats to process (default: eml,html,pdf)
+  -f, --format TEXT           File format to process (default: eml)
   --wikidata / --no-wikidata  Enable Wikidata entity linking (slower)
   -m, --model TEXT            spaCy model to use (default: en_core_web_sm)
   -e, --entity-types TEXT     Comma-separated entity types to extract (default: PERSON,ORG,GPE,LOC)
@@ -45,13 +45,11 @@ For each processed email, a JSON file is created with the `.entities.json` exten
   "subject": "Important Message",
   "entities": [
     {
-      "text": "John Smith",
+      "text": "Stephen Beal",
       "label": "PERSON",
-      "start": 45,
-      "end": 55,
-      "wikidata_id": "Q12345",
-      "wikidata_url": "https://www.wikidata.org/wiki/Q12345",
-      "wikidata_description": "American politician"
+      "wikidata_id": "Q7608685",
+      "wikidata_url": "https://www.wikidata.org/wiki/Q7608685",
+      "wikidata_description": "American artist"
     }
   ]
 }
