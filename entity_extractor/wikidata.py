@@ -41,6 +41,7 @@ entity_cache: dict[str, Entity] = {
     "David Howse": howse_entity,
     "Stephen Beal": beal_entity,
     "Stephen Beal  President": beal_entity,
+    "Steve Beal": beal_entity,
 }
 
 
