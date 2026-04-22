@@ -96,6 +96,7 @@ for entity in result.entities:
 
 ```bash
 entity_extractor/
+├── tests/            # Unit tests
 ├── __init__.py       # Package initialization
 ├── cli.py            # Rich CLI interface
 ├── parsers.py        # Email parsing (EML, HTML, PDF)
@@ -121,7 +122,6 @@ uv run pytest
 ### Code Formatting
 
 ```bash
-uv run black entity_extractor/ # format code
 uv run ruff check entity_extractor/ # lint code
 ```
 
