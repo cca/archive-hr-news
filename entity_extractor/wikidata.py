@@ -11,6 +11,13 @@ from .models import Entity
 
 # CCA and certain figures will come up often
 # This way we know we get them right and save requests
+beal_entity: Entity = Entity(
+    text="Stephen Beal",
+    label="PERSON",
+    wikidata_id="Q7608685",
+    wikidata_url="https://www.wikidata.org/entity/Q7608685",
+    wikidata_description="American artist",
+)
 cca_entity: Entity = Entity(
     text="CCA",
     label="ORG",
@@ -32,13 +39,8 @@ entity_cache: dict[str, Entity] = {
     "California College of Art and Craft": cca_entity,
     "David C. Howse": howse_entity,
     "David Howse": howse_entity,
-    "Stephen Beal": Entity(
-        text="Stephen Beal",
-        label="PERSON",
-        wikidata_id="Q7608685",
-        wikidata_url="https://www.wikidata.org/entity/Q7608685",
-        wikidata_description="American artist",
-    ),
+    "Stephen Beal": beal_entity,
+    "Stephen Beal  President": beal_entity,
 }
 
 
