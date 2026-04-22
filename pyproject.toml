@@ -5,12 +5,12 @@ description = "Extract named entities from emails using spaCy NER"
 readme = "readme.md"
 requires-python = ">=3.10"
 dependencies = [
-    "spacy>=3.7.0",
-    "rich>=13.0.0",
-    "click>=8.1.0",
+    "spacy==3.8.14",
+    "rich==15.0.0",
+    "click==8.3.3",
     "beautifulsoup4>=4.12.0",
     "pdfplumber>=0.10.0",
-    "requests>=2.31.0",
+    "requests==2.33.1",
 ]
 
 [project.scripts]
