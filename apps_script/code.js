@@ -22,10 +22,30 @@ const folders = {
   "President's Office": "1z7oiwjQIwnQ_Orq2nsp80q0qx9bqoKPd",
 }
 
-// archive HR newsletters
-// archiveHRYear(2025)
-// Test archiving President's Office emails for 2025
-archiveEmails('2025-08-11', '2025-08-13', 'presidents-office@cca.edu', null, folders["Tests"])
+// wrap main body in fn for easier execution with Apps Script
+function run() {
+  // Testing emails of various formats
+  // Regular HR email
+  archiveEmails("2025-12-15", "2025-12-16", "hr@cca.edu", "HR NEWS: EOY Party", folders["Tests"])
+  // Regular President email with a couple of hyperlinks
+  archiveEmails("2020-04-27", "2020-04-28", "presidents-office@cca.edu", "summer programs and financial challenges", folders["Tests"])
+  // President's Office email with inline image attachment
+  archiveEmails("2025-08-12", "2025-08-13", "presidents-office@cca.edu", "Summer Updates", folders["Tests"])
+  // President's Office 2-thread email with 4 PDF attachments
+  archiveEmails("2016-06-17", "2016-06-18", "presidents-office@cca.edu", "Recent Events", folders["Tests"])
+
+  // archive HR newsletters
+  // archiveHRYear(2025)
+
+  // President's Office emails for 2025
+  // archiveEmails(
+  //   "2014-06-01",
+  //   "2019-01-01",
+  //   "presidents-office@cca.edu",
+  //   null,
+  //   folders["President's Office"],
+  // )
+}
 
 /**
  * Archive emails from your Gmail inbox to Drive as dated PDFs, along with EML and HTML files.
@@ -46,6 +66,7 @@ function archiveEmails(startDate, endDate, sender, subjectKeyword, folderId) {
   if (!endDate || !endDate.match(/^\d{4}\-\d{2}\-\d{2}$/)) {
     throw new Error('endDate is required (format YYYY-MM-DD). Use archiveYear(year) to archive a full year.')
   }
+  // ! We do not validate endDate > startDate, Gmail will just return 0 results
 
   // create folder if we do not have one
   folderId = folderId || getOrCreateFolderByName(`${sender} Email Archive`).getId()
@@ -255,8 +276,10 @@ function convertCIDtoBase64(html, contentIdMap) {
 /**
  * Decorate the email message body to be a complete HTML representation with
  * select headers, embedded images, and a list of attachments.
- * @param {object} msg - GmailMessage object https://developers.google.com/apps-script/reference/gmail/gmail-message
- * @param {array} attachments - Array of GmailAttachment objects https://developers.google.com/apps-script/reference/gmail/gmail-attachment
+ * @param {object} msg - GmailMessage object
+ * https://developers.google.com/apps-script/reference/gmail/gmail-message
+ * @param {array} attachments - Array of GmailAttachment objects
+ * https://developers.google.com/apps-script/reference/gmail/gmail-attachment
  * @param {object} contentIdMap - map of contentId to Drive File for embedded images
  * @returns {string} HTML email
  */
@@ -270,7 +293,6 @@ function buildMessageHtml(msg, attachments, contentIdMap) {
     '<strong>Subject:</strong> ' + escapeHtml(msg.getSubject() || '') + '<br>' +
     '</div>'
 
-  // TODO We could also save the plain body while debugging? Or there could be a toggle elsewhere to save plain text only?
   // ! I don't think msg.getBody is ever false, nor is the condition below a good way to check for plain text
   let bodyHtml = msg.getBody ? msg.getBody() : escapeHtml(msg.getPlainBody ? msg.getPlainBody() : '(no body)')
   // If bodyHtml is plain-text, wrap in <pre>
