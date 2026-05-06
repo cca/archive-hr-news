@@ -6,12 +6,26 @@ Google Apps Script to search my gmail inbox for particular emails worth archivin
 
 - Go to script.google.com and create a project
 - Copy-paste code.js in the project's default code file
-- Under **Services**, add the **Gmail API**
+- Under **Services**, add the **Gmail API** & **Drive API**
 - **Deploy** the project which causes it to ask for Gmail & Drive permissions
 
 ## Usage
 
 Edit the `archiveHRYear(2025)` function at the top to capture a year of newsletters then **Run**. They will be saved to a folder named "HR News Archive" in your Drive, which is created if it does not exist. I have not tried moving the folder to a Shared Drive to see if files continue to be saved to it or if that causes the script to create another folder instead.
+
+## CLI Usage
+
+[Google's `clasp`](https://developers.google.com/apps-script/guides/clasp) utility can update and execute apps scripts from the command line. To use it, you must [enable the Apps Script API](https://script.google.com/home/usersettings) for your Google account.
+
+```sh
+pnpm install --global @google/clasp # install globally
+clasp login # authenticate with Google account
+clasp clone $SCRIPT_ID # clone the script to local directory
+clasp push # push local changes to the script
+clasp pull # pull changes from script locally
+```
+
+`clasp run run` (where "run" is the function name) _should_ execute the function, but there are a lot of steps to make it work. The Apps Script has to be associated with a GCP project. The project also needs to be deployed as an "API Executable". The GCP project needs an OAuth client ID (APIs & Services > Credentials), then `clasp` need to authenticate _using those credentials_ like `clasp login --creds creds.json --use-project-scopes --include-clasp-scopes`.
 
 ## Files
 

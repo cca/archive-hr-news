@@ -1,6 +1,11 @@
 # Downloaded emails
 data/
 
+# clasp credentials
+.clasprc.json
+.clasp.json
+apps_script/creds.json
+
 # Python
 __pycache__/
 *.py[cod]
