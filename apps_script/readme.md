@@ -25,7 +25,9 @@ clasp push # push local changes to the script
 clasp pull # pull changes from script locally
 ```
 
-`clasp run run` (where "run" is the function name) _should_ execute the function, but there are a lot of steps to make it work. The Apps Script has to be associated with a GCP project. The project also needs to be deployed as an "API Executable". The GCP project needs an OAuth client ID (APIs & Services > Credentials), then `clasp` need to authenticate _using those credentials_ like `clasp login --creds creds.json --use-project-scopes --include-clasp-scopes`.
+tl;dr — it is a lot of Google Cloud configuration to make `clasp run` work and I recommend sticking to the commands above and ignoring the below unless you are comfortable with GCP.
+
+`clasp run run` (where "run" is the function name) _should_ execute the function, but there are a lot of steps to make it work. The Apps Script has to be associated with a GCP project. The project also needs to be deployed as an "API Executable". The GCP project needs Apps Script API enabled under "APIs & Services" as well as all APIs the script uses (e.g. Drive & Gmail). Finally, the project needs an OAuth client ID (APIs & Services > Credentials), then `clasp` need to authenticate _using those credentials_ like `clasp login --creds creds.json --use-project-scopes --include-clasp-scopes`.
 
 ## Files
 
