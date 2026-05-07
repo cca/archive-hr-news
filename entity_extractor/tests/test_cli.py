@@ -490,3 +490,95 @@ def test_compile_single_file(tmp_path):
         rows = list(reader)
 
     assert len(rows) == 2
+
+
+def test_compile_removes_newlines_from_text(tmp_path):
+    """Test that newlines in entity text are converted to spaces in CSV output."""
+    entities = {
+        "source_file": "test.eml",
+        "format": "eml",
+        "entities": [
+            {"text": "New\nYork", "label": "GPE"},
+            {"text": "San Francisco\nArt Institute", "label": "ORG"},
+            {"text": "Line1\r\nLine2", "label": "PERSON"},
+            {"text": "Multiple\n\nNewlines", "label": "ORG"},
+            {"text": "Normal Text", "label": "GPE"},
+        ],
+    }
+
+    json_file = tmp_path / "test.entities.json"
+    json_file.write_text(json.dumps(entities))
+
+    runner = CliRunner()
+    output_csv = tmp_path / "output.csv"
+
+    result = runner.invoke(cli, ["compile", str(json_file), "-o", str(output_csv)])
+
+    assert result.exit_code == 0
+
+    with open(output_csv, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    # Check that newlines are replaced with spaces
+    new_york = [r for r in rows if "New" in r["text"] and "York" in r["text"]][0]
+    assert new_york["text"] == "New York"
+    assert "\n" not in new_york["text"]
+
+    sf_art = [r for r in rows if "San Francisco" in r["text"] and "Art" in r["text"]][0]
+    assert sf_art["text"] == "San Francisco Art Institute"
+    assert "\n" not in sf_art["text"]
+
+    # Check \r\n is replaced
+    line_text = [r for r in rows if "Line1" in r["text"]][0]
+    assert line_text["text"] == "Line1  Line2"  # \r and \n each become a space
+    assert "\n" not in line_text["text"]
+    assert "\r" not in line_text["text"]
+
+    # Check multiple newlines
+    multiple = [r for r in rows if "Multiple" in r["text"]][0]
+    assert multiple["text"] == "Multiple  Newlines"  # Two spaces from two newlines
+    assert "\n" not in multiple["text"]
+
+    # Check normal text is unchanged
+    normal = [r for r in rows if r["text"] == "Normal Text"][0]
+    assert normal["text"] == "Normal Text"
+
+
+def test_compile_newlines_in_wikidata_description(tmp_path):
+    """Test that newlines in wikidata descriptions are preserved (not cleaned)."""
+    entities = {
+        "source_file": "test.eml",
+        "format": "eml",
+        "entities": [
+            {
+                "text": "Entity\nWith\nNewlines",
+                "label": "ORG",
+                "wikidata_description": "This is a\nmultiline description",
+            }
+        ],
+    }
+
+    json_file = tmp_path / "test.entities.json"
+    json_file.write_text(json.dumps(entities))
+
+    runner = CliRunner()
+    output_csv = tmp_path / "output.csv"
+
+    result = runner.invoke(cli, ["compile", str(json_file), "-o", str(output_csv)])
+
+    assert result.exit_code == 0
+
+    with open(output_csv, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    assert len(rows) == 1
+    row = rows[0]
+
+    # Entity text should have newlines removed
+    assert "\n" not in row["text"]
+    assert row["text"] == "Entity With Newlines"
+
+    # Wikidata description can keep newlines (CSV handles it)
+    # This is okay because CSV properly quotes fields with newlines

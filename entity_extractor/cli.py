@@ -395,9 +395,11 @@ def write_entities_csv(
             source_emails = " | ".join(
                 sorted(Path(src).stem for src in entity_sources[entity])
             )
+            # Clean entity text by replacing newlines with spaces
+            clean_text = entity.text.replace("\n", " ").replace("\r", " ")
             writer.writerow(
                 {
-                    "text": entity.text,
+                    "text": clean_text,
                     "label": entity.label,
                     "wikidata_id": entity.wikidata_id or "",
                     "wikidata_url": entity.wikidata_url or "",
