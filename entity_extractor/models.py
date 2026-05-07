@@ -21,15 +21,35 @@ class Entity:
         """Convert entity to dictionary, excluding None values."""
         return {k: v for k, v in asdict(self).items() if v is not None}
 
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        """Normalize entity text for deduplication.
+
+        Removes common variations:
+        - "the " prefix (case-insensitive)
+        - "'s" possessive suffix
+        """
+        normalized = text.lower()
+        # Remove "the " prefix
+        if normalized.startswith("the "):
+            normalized = normalized[4:]
+        # Remove "'s" possessive suffix
+        if normalized.endswith("'s"):
+            normalized = normalized[:-2]
+        return normalized
+
     def __hash__(self):
-        """Hash based on text and label for deduplication."""
-        return hash((self.text.lower(), self.label))
+        """Hash based on normalized text and label for deduplication."""
+        return hash((self._normalize_text(self.text), self.label))
 
     def __eq__(self, other):
-        """Equality based on text and label (case-insensitive)."""
+        """Equality based on normalized text and label."""
         if not isinstance(other, Entity):
             return False
-        return self.text.lower() == other.text.lower() and self.label == other.label
+        return (
+            self._normalize_text(self.text) == self._normalize_text(other.text)
+            and self.label == other.label
+        )
 
 
 @dataclass
