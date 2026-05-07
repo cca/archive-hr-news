@@ -9,27 +9,54 @@ Python CLI tool for extracting named entities (people, organizations, locations)
 
 ## Usage
 
-### Basic Commands
+The CLI has two main subcommands: `extract` for processing emails and `compile` for aggregating entities.
+
+### Extract Subcommand
+
+Extract named entities from email files:
 
 ```bash
 # Process all email files in a directory
-uv run extract-entities data/
-# Process a single file:
-uv run extract-entities data/email.eml
-# With Wikidata linking:
-uv run extract-entities data/ --wikidata
-# Process a specific format:
-uv run extract-entities data/ --format html
-uv run extract-entities -h
-  -o, --output-dir PATH       Output directory for JSON files (default: same as input)
-  -f, --format TEXT           File format to process (default: eml)
-  --wikidata / --no-wikidata  Enable Wikidata entity linking (slower)
-  -m, --model TEXT            spaCy model to use (default: en_core_web_sm)
-  -e, --entity-types TEXT     Comma-separated entity types to extract (default: PERSON,ORG,GPE,LOC)
-  --help                      Show this message and exit.
+uv run extract-entities extract data/
+# Process a single file
+uv run extract-entities extract data/email.eml
+# With Wikidata linking
+uv run extract-entities extract data/ --wikidata
+# Process a specific format
+uv run extract-entities extract data/ --format html
 ```
 
-## Output Format
+**Options:**
+
+- `-o, --output-dir PATH` - Output directory for JSON files (default: same as input)
+- `-f, --format [eml|html|pdf]` - File format to process (default: eml)
+- `--wikidata / --no-wikidata` - Enable Wikidata entity linking (slower)
+- `-m, --model TEXT` - spaCy model to use (default: en_core_web_sm)
+- `-e, --entity-types TEXT` - Comma-separated entity types to extract (default: PERSON,ORG,GPE,LOC)
+
+### Compile Subcommand
+
+Compile a deduplicated list of all entities from existing entity JSON files:
+
+```bash
+# Compile all entities from a directory to CSV
+uv run extract-entities compile data/
+# Specify output location
+uv run extract-entities compile data/ -o entities.csv
+# Print to console instead of saving CSV
+uv run extract-entities compile data/ --print
+# Process a single entity file
+uv run extract-entities compile data/email.entities.json
+```
+
+**Options:**
+
+- `-o, --output PATH` - Output CSV file path (default: entities.csv in input directory)
+- `--print / --no-print` - Print entities to console instead of saving to CSV
+
+## Output Formats
+
+### Extract Output
 
 For each processed email, a JSON file is created with the `.entities.json` extension:
 
@@ -49,6 +76,10 @@ For each processed email, a JSON file is created with the `.entities.json` exten
   ]
 }
 ```
+
+### Compile Output
+
+Output is a CSV of _deduplicated_ entities.
 
 ### Entity Types
 

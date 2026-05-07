@@ -15,9 +15,11 @@ Python CLI tool for extracting named entities (people, organizations, locations)
 ```bash
 # Install dependencies & spaCy model
 uv sync
-uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+uv run spacy download en_core_web_sm
 # Extract entities from emails
-uv run extract-entities data/
+uv run extract-entities extract data/
+# Compile all entities into a single CSV
+uv run extract-entities compile data/
 ```
 
 ## License

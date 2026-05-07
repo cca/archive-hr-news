@@ -1,5 +1,6 @@
 """Command-line interface for email entity extraction."""
 
+import csv
 import json
 import sys
 from pathlib import Path
@@ -18,7 +19,7 @@ from rich.progress import (
 )
 from rich.table import Table
 
-from .models import EmailEntities
+from .models import EmailEntities, Entity
 from .ner import NERProcessor
 from .parsers import parse_email_file
 from .wikidata import WikidataLinker
@@ -26,7 +27,14 @@ from .wikidata import WikidataLinker
 console = Console()
 
 
-@click.command()
+@click.group()
+@click.help_option("-h", "--help")
+def cli():
+    """Email entity extraction and analysis tools."""
+    pass
+
+
+@cli.command(name="extract")
 @click.help_option("-h", "--help")
 @click.argument("input_path", type=click.Path(exists=True, path_type=Path))
 @click.option(
@@ -59,7 +67,7 @@ console = Console()
     default="PERSON,ORG,GPE,LOC",
     help="Comma-separated entity types to extract (default: PERSON,ORG,GPE,LOC)",
 )
-def main(
+def extract(
     input_path: Path,
     output_dir: Optional[Path],
     format: str,
@@ -239,5 +247,157 @@ def display_summary(results: List[EmailEntities]):
         console.print("\n[dim]Output files saved with .entities.json extension[/dim]")
 
 
+@cli.command(name="compile")
+@click.help_option("-h", "--help")
+@click.argument("input_path", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    help="Output CSV file path (default: entities.csv in input directory)",
+)
+@click.option(
+    "--print/--no-print",
+    default=False,
+    help="Print entities to console instead of saving to CSV",
+)
+def compile_entities(input_path: Path, output: Optional[Path], print: bool):
+    """
+    Compile a deduplicated list of all entities from existing entity JSON files.
+
+    INPUT_PATH should be a directory containing .entities.json files.
+    """
+    console.print(
+        Panel.fit(
+            "[bold cyan]Entity Compiler[/bold cyan]\n"
+            "Compiling entities from JSON files",
+            border_style="cyan",
+        )
+    )
+
+    # Collect all .entities.json files
+    if input_path.is_file():
+        if input_path.suffix == ".json" and ".entities" in input_path.name:
+            json_files = [input_path]
+        else:
+            console.print("[red]Error: Input file must be a .entities.json file[/red]")
+            sys.exit(1)
+    else:
+        json_files = list(input_path.glob("*.entities.json"))
+
+    if not json_files:
+        console.print("[yellow]No .entities.json files found.[/yellow]")
+        return
+
+    console.print(f"\n[green]Found {len(json_files)} entity file(s)[/green]")
+
+    # Collect and deduplicate entities
+    all_entities: set[Entity] = set()
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task("[cyan]Loading entities...", total=len(json_files))
+
+        for json_file in json_files:
+            try:
+                with open(json_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    for entity_data in data.get("entities", []):
+                        entity = Entity(
+                            text=entity_data["text"],
+                            label=entity_data["label"],
+                            wikidata_id=entity_data.get("wikidata_id"),
+                            wikidata_url=entity_data.get("wikidata_url"),
+                            wikidata_description=entity_data.get(
+                                "wikidata_description"
+                            ),
+                        )
+                        all_entities.add(entity)
+            except Exception as e:
+                console.print(f"[red]Error reading {json_file.name}: {e}[/red]")
+
+            progress.advance(task)
+
+    # Sort entities by label then text
+    sorted_entities = sorted(all_entities, key=lambda e: (e.label, e.text.lower()))
+
+    console.print(
+        f"\n[bold green]Compiled {len(sorted_entities)} unique entities[/bold green]"
+    )
+
+    # Print to console if requested
+    if print:
+        display_entities_table(sorted_entities)
+    else:
+        # Write to CSV only if not printing
+        if output is None:
+            output = (
+                input_path / "entities.csv"
+                if input_path.is_dir()
+                else input_path.parent / "entities.csv"
+            )
+
+        write_entities_csv(sorted_entities, output)
+        console.print(f"\n[green]Entities saved to:[/green] {output}")
+
+
+def display_entities_table(entities: List[Entity]):
+    """Display entities in a formatted table."""
+    table = Table(
+        title="Compiled Entities", show_header=True, header_style="bold magenta"
+    )
+    table.add_column("Text", style="cyan")
+    table.add_column("Type", style="yellow")
+    table.add_column("Wikidata ID", style="blue")
+    table.add_column("Wikidata Description", style="dim", no_wrap=False)
+
+    for entity in entities:
+        table.add_row(
+            entity.text,
+            entity.label,
+            entity.wikidata_id or "",
+            entity.wikidata_description or "",
+        )
+
+    console.print("\n")
+    console.print(table)
+
+
+def write_entities_csv(entities: List[Entity], output_path: Path):
+    """Write entities to a CSV file."""
+    with open(output_path, "w", encoding="utf-8", newline="") as csvfile:
+        fieldnames = [
+            "text",
+            "label",
+            "wikidata_id",
+            "wikidata_url",
+            "wikidata_description",
+        ]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for entity in entities:
+            writer.writerow(
+                {
+                    "text": entity.text,
+                    "label": entity.label,
+                    "wikidata_id": entity.wikidata_id or "",
+                    "wikidata_url": entity.wikidata_url or "",
+                    "wikidata_description": entity.wikidata_description or "",
+                }
+            )
+
+
+# Keep backward compatibility by making the main function available
+def main():
+    """Main entry point for backward compatibility."""
+    cli()
+
+
 if __name__ == "__main__":
-    main()
+    cli()
