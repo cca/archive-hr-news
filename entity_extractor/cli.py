@@ -258,10 +258,11 @@ def display_summary(results: List[EmailEntities]):
 )
 @click.option(
     "--print/--no-print",
+    "print_output",
     default=False,
     help="Print entities to console instead of saving to CSV",
 )
-def compile_entities(input_path: Path, output: Optional[Path], print: bool):
+def compile_entities(input_path: Path, output: Optional[Path], print_output: bool):
     """
     Compile a deduplicated list of all entities from existing entity JSON files.
 
@@ -336,7 +337,7 @@ def compile_entities(input_path: Path, output: Optional[Path], print: bool):
     )
 
     # Print to console if requested
-    if print:
+    if print_output:
         display_entities_table(sorted_entities)
     else:
         # Write to CSV only if not printing
