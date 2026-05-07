@@ -109,12 +109,20 @@ def test_compile_csv_structure(temp_entities_dir):
         "wikidata_id",
         "wikidata_url",
         "wikidata_description",
+        "source_emails",
     }
 
     # Check San Francisco has wikidata info
     sf_row = [r for r in rows if r["text"] == "San Francisco"][0]
     assert sf_row["wikidata_id"] == "Q62"
     assert "wikidata.org" in sf_row["wikidata_url"]
+
+    # Check Acme Corp appears in both source files (without .eml extension)
+    acme_row = [r for r in rows if r["text"] == "Acme Corp"][0]
+    assert "test1" in acme_row["source_emails"]
+    assert "test2" in acme_row["source_emails"]
+    assert " | " in acme_row["source_emails"]
+    assert ".eml" not in acme_row["source_emails"]
 
 
 def test_compile_default_output_path(temp_entities_dir):
@@ -393,6 +401,65 @@ def test_compile_no_print_creates_csv(temp_entities_dir):
     assert "Entities saved to:" in result.output
     # CSV should be created
     assert output_csv.exists()
+
+
+def test_compile_source_emails_tracking(tmp_path):
+    """Test that source emails are tracked for each entity."""
+    entities1 = {
+        "source_file": "email1.eml",
+        "format": "eml",
+        "entities": [
+            {"text": "Shared Entity", "label": "PERSON"},
+            {"text": "Unique to Email 1", "label": "ORG"},
+        ],
+    }
+
+    entities2 = {
+        "source_file": "email2.eml",
+        "format": "eml",
+        "entities": [
+            {"text": "Shared Entity", "label": "PERSON"},  # Duplicate
+            {"text": "Unique to Email 2", "label": "ORG"},
+        ],
+    }
+
+    entities3 = {
+        "source_file": "email3.eml",
+        "format": "eml",
+        "entities": [
+            {"text": "Shared Entity", "label": "PERSON"},  # Duplicate
+        ],
+    }
+
+    (tmp_path / "email1.entities.json").write_text(json.dumps(entities1))
+    (tmp_path / "email2.entities.json").write_text(json.dumps(entities2))
+    (tmp_path / "email3.entities.json").write_text(json.dumps(entities3))
+
+    runner = CliRunner()
+    output_csv = tmp_path / "output.csv"
+
+    result = runner.invoke(cli, ["compile", str(tmp_path), "-o", str(output_csv)])
+
+    assert result.exit_code == 0
+
+    with open(output_csv, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    # Check shared entity has all three sources (without .eml extension)
+    shared_row = [r for r in rows if r["text"] == "Shared Entity"][0]
+    assert "email1" in shared_row["source_emails"]
+    assert "email2" in shared_row["source_emails"]
+    assert "email3" in shared_row["source_emails"]
+    assert (
+        shared_row["source_emails"].count(" | ") == 2
+    )  # Two separators for three items
+    assert ".eml" not in shared_row["source_emails"]
+
+    # Check unique entities have single source
+    unique1_row = [r for r in rows if r["text"] == "Unique to Email 1"][0]
+    assert unique1_row["source_emails"] == "email1"
+    assert " | " not in unique1_row["source_emails"]
 
 
 def test_compile_single_file(tmp_path):

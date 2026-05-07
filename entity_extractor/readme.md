@@ -79,7 +79,7 @@ For each processed email, a JSON file is created with the `.entities.json` exten
 
 ### Compile Output
 
-Output is a CSV of _deduplicated_ entities.
+Outputs a CSV of deduplicated entities (case-insensitive) with pipe-separated source email filenames for each entity.
 
 ### Entity Types
 

@@ -291,8 +291,8 @@ def compile_entities(input_path: Path, output: Optional[Path], print: bool):
 
     console.print(f"\n[green]Found {len(json_files)} entity file(s)[/green]")
 
-    # Collect and deduplicate entities
-    all_entities: set[Entity] = set()
+    # Collect and deduplicate entities, tracking source files
+    entity_sources: dict[Entity, set[str]] = {}
 
     with Progress(
         SpinnerColumn(),
@@ -307,6 +307,7 @@ def compile_entities(input_path: Path, output: Optional[Path], print: bool):
             try:
                 with open(json_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
+                    source_file = data.get("source_file", json_file.stem)
                     for entity_data in data.get("entities", []):
                         entity = Entity(
                             text=entity_data["text"],
@@ -317,14 +318,18 @@ def compile_entities(input_path: Path, output: Optional[Path], print: bool):
                                 "wikidata_description"
                             ),
                         )
-                        all_entities.add(entity)
+                        if entity not in entity_sources:
+                            entity_sources[entity] = set()
+                        entity_sources[entity].add(source_file)
             except Exception as e:
                 console.print(f"[red]Error reading {json_file.name}: {e}[/red]")
 
             progress.advance(task)
 
     # Sort entities by label then text
-    sorted_entities = sorted(all_entities, key=lambda e: (e.label, e.text.lower()))
+    sorted_entities = sorted(
+        entity_sources.keys(), key=lambda e: (e.label, e.text.lower())
+    )
 
     console.print(
         f"\n[bold green]Compiled {len(sorted_entities)} unique entities[/bold green]"
@@ -342,7 +347,7 @@ def compile_entities(input_path: Path, output: Optional[Path], print: bool):
                 else input_path.parent / "entities.csv"
             )
 
-        write_entities_csv(sorted_entities, output)
+        write_entities_csv(sorted_entities, entity_sources, output)
         console.print(f"\n[green]Entities saved to:[/green] {output}")
 
 
@@ -368,8 +373,10 @@ def display_entities_table(entities: List[Entity]):
     console.print(table)
 
 
-def write_entities_csv(entities: List[Entity], output_path: Path):
-    """Write entities to a CSV file."""
+def write_entities_csv(
+    entities: List[Entity], entity_sources: dict[Entity, set[str]], output_path: Path
+):
+    """Write entities to a CSV file with source email information."""
     with open(output_path, "w", encoding="utf-8", newline="") as csvfile:
         fieldnames = [
             "text",
@@ -377,11 +384,16 @@ def write_entities_csv(entities: List[Entity], output_path: Path):
             "wikidata_id",
             "wikidata_url",
             "wikidata_description",
+            "source_emails",
         ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
         for entity in entities:
+            # Sort source emails alphabetically, strip extension, and join with pipe
+            source_emails = " | ".join(
+                sorted(Path(src).stem for src in entity_sources[entity])
+            )
             writer.writerow(
                 {
                     "text": entity.text,
@@ -389,6 +401,7 @@ def write_entities_csv(entities: List[Entity], output_path: Path):
                     "wikidata_id": entity.wikidata_id or "",
                     "wikidata_url": entity.wikidata_url or "",
                     "wikidata_description": entity.wikidata_description or "",
+                    "source_emails": source_emails,
                 }
             )
 
