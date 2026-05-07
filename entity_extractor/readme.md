@@ -1,11 +1,11 @@
 # Entity Extractor
 
-Python CLI tool for extracting named entities (people, organizations, locations) from emails using spaCy NER. The entities are stored as JSON files with names that collocate them alongside their source email files. The tool can process EML, HTML, and PDF files and outputs structured JSON with entity information. Optional Wikidata linking is available.
+Python CLI tool for extracting named entities (people, organizations, locations) from emails using spaCy NER. The entities are stored as JSON files with names that collocate them alongside their source email files. The tool can process EML (default), HTML, and PDF files and outputs structured JSON with entity information. Optional Wikidata linking is available.
 
 ## Installation
 
 1. Install dependencies using uv: `uv sync`
-2. Download the spaCy language model: `uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl`
+2. Download the spaCy language model: `uv run spacy download en_core_web_sm`
 
 ## Usage
 
@@ -13,19 +13,14 @@ Python CLI tool for extracting named entities (people, organizations, locations)
 
 ```bash
 # Process all email files in a directory
-extract-entities data/
+uv run extract-entities data/
 # Process a single file:
-extract-entities data/email.eml
+uv run extract-entities data/email.eml
 # With Wikidata linking:
-extract-entities data/ --wikidata
+uv run extract-entities data/ --wikidata
 # Process a specific format:
-extract-entities data/ --format html
-```
-
-### CLI Options
-
-```bash
-Options:
+uv run extract-entities data/ --format html
+uv run extract-entities -h
   -o, --output-dir PATH       Output directory for JSON files (default: same as input)
   -f, --format TEXT           File format to process (default: eml)
   --wikidata / --no-wikidata  Enable Wikidata entity linking (slower)
@@ -105,24 +100,12 @@ entity_extractor/
 └── models.py         # Data models (Entity, EmailEntities)
 ```
 
-### Parser Priority
-
-1. **EML** (best): Native email format with structured headers and plain text body
-2. **HTML**: Structured markup, easy to extract text
-3. **PDF**: Last resort, text extraction can be unreliable
-
 ## Development
 
-### Running Tests
-
 ```bash
-uv run pytest
-```
-
-### Code Formatting
-
-```bash
-uv run ruff check entity_extractor/ # lint code
+uv run pytest # tests
+uv run ruff check entity_extractor # lint code
+uv run ruff format --check entity_extractor # format code
 ```
 
 ## Troubleshooting
@@ -130,11 +113,3 @@ uv run ruff check entity_extractor/ # lint code
 ### Version compatibility warning
 
 The warning about spaCy version compatibility is expected and can be ignored unless you see actual errors.
-
-## Future Enhancements
-
-- Check extracted entities for CCA affiliations
-- Batch processing with parallel workers
-- Custom entity recognition rules
-- Integration with other knowledge bases (VIAF, LCNAF)
-- Export to different formats (CSV, TSV, SQLite)
