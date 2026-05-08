@@ -1,6 +1,6 @@
 # Archive HR Newsletters
 
-Several tools for email archiving at CCA.
+Several tools for email archiving at CCA. [See issue #20 for an outline](https://github.com/cca/archive-emails/issues/20) of archiving a set of emails from downloading them from Gmail to extracting named entities to creating metadata in VAULT.
 
 ## Apps Script
 
